@@ -132,7 +132,7 @@ public class Producto {
         this.fechaCreacion = fechaCreacion;
     }
 
-    public Boolean isEstado() {
+    public Boolean getEstado() {
         return estado;
     }
 
