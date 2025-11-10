@@ -33,4 +33,18 @@ public class UsuarioMapper {
         
         return usuario;
     }
+    
+    public static void updateEntityFromDTO(Usuario usuario, UsuarioDTO dto) {
+        if (usuario == null || dto == null) return;
+        
+        if (dto.getNombre() != null) {
+            usuario.setNombre(dto.getNombre());
+        }
+        if (dto.getApellido() != null) {
+            usuario.setApellido(dto.getApellido());
+        }
+        if (dto.getEmail() != null) {
+            usuario.setEmail(dto.getEmail());
+        }
+    }
 }
