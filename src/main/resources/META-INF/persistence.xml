@@ -1,7 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <persistence version="3.0" xmlns="https://jakarta.ee/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
     <!-- Define Persistence Unit -->
-    <persistence-unit name="my_persistence_unit">
+    <persistence-unit name="MarketplacePU" transaction-type="JTA">
+        <jta-data-source>jdbc/marketplaceDS</jta-data-source>
         
+        <!-- Entidades JPA -->
+        <class>com.marketplace.entities.Usuario</class>
+        <class>com.marketplace.entities.Categoria</class>
+        <class>com.marketplace.entities.Producto</class>
+        <class>com.marketplace.entities.InventarioFisico</class>
+        <class>com.marketplace.entities.InventarioDigital</class>
+        <class>com.marketplace.entities.Carrito</class>
+        <class>com.marketplace.entities.ItemCarrito</class>
+        <class>com.marketplace.entities.Orden</class>
+        <class>com.marketplace.entities.DetalleOrden</class>
+        <class>com.marketplace.entities.Descarga</class>
+        
+        <properties>
+            <!-- Configuración de Hibernate -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+            
+            <!-- NO crear/actualizar schema automáticamente en producción -->
+            <!-- Usar 'none' en producción, 'update' solo en desarrollo -->
+            <property name="jakarta.persistence.schema-generation.database.action" value="none"/>
+            
+            <!-- Mostrar SQL en consola (solo desarrollo) -->
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            
+            <!-- Comentarios en el SQL generado -->
+            <property name="hibernate.use_sql_comments" value="true"/>
+            
+            <!-- Estadísticas de Hibernate (solo desarrollo) -->
+            <property name="hibernate.generate_statistics" value="false"/>
+            
+            <!-- Configuración de cache de segundo nivel (opcional) -->
+            <property name="hibernate.cache.use_second_level_cache" value="false"/>
+            <property name="hibernate.cache.use_query_cache" value="false"/>
+            
+            <!-- Configuración de conexiones -->
+            <property name="hibernate.connection.autocommit" value="false"/>
+            
+            <!-- Manejo de transacciones -->
+            <property name="hibernate.transaction.jta.platform" 
+                      value="org.hibernate.engine.transaction.jta.platform.internal.SunOneJtaPlatform"/>
+        </properties>
     </persistence-unit>
 </persistence>
