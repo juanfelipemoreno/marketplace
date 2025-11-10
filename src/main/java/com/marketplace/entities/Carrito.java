@@ -2,6 +2,8 @@ package com.marketplace.entities;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -16,8 +18,12 @@ public class Carrito {
     @Column(name = "id_carrito")
     private Long idCarrito;
 
-    @Column(name = "id_usuario", nullable = false, unique = true)
-    private Long idUsuario;
+    @OneToOne
+    @JoinColumn(name = "id_usuario", nullable = false, unique = true)
+    private Usuario usuario;
+
+    @OneToMany(mappedBy = "carrito", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ItemCarrito> items = new ArrayList<>();
 
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
@@ -38,12 +44,20 @@ public class Carrito {
         this.idCarrito = idCarrito;
     }
 
-    public Long getIdUsuario() {
-        return idUsuario;
+    public Usuario getUsuario() {
+        return usuario;
     }
 
-    public void setIdUsuario(Long idUsuario) {
-        this.idUsuario = idUsuario;
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
+
+    public List<ItemCarrito> getItems() {
+        return items;
+    }
+
+    public void setItems(List<ItemCarrito> items) {
+        this.items = items;
     }
 
     public LocalDateTime getFechaCreacion() {

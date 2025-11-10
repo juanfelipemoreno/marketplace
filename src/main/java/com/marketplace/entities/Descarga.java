@@ -16,14 +16,17 @@ public class Descarga {
     @Column(name = "id_descarga")
     private Long idDescarga;
 
-    @Column(name = "id_usuario", nullable = false)
-    private Long idUsuario;
+    @ManyToOne
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private Usuario usuario;
 
-    @Column(name = "id_producto", nullable = false)
-    private Long idProducto;
+    @ManyToOne
+    @JoinColumn(name = "id_producto", nullable = false)
+    private Producto producto;
 
-    @Column(name = "id_orden", nullable = false)
-    private Long idOrden;
+    @ManyToOne
+    @JoinColumn(name = "id_orden", nullable = false)
+    private Orden orden;
 
     @Column(name = "fecha_descarga")
     private LocalDateTime fechaDescarga;
@@ -40,6 +43,7 @@ public class Descarga {
         this.limiteDescargas = 3;
     }
 
+    // Getters y Setters
     public Long getIdDescarga() {
         return idDescarga;
     }
@@ -48,28 +52,28 @@ public class Descarga {
         this.idDescarga = idDescarga;
     }
 
-    public Long getIdUsuario() {
-        return idUsuario;
+    public Usuario getUsuario() {
+        return usuario;
     }
 
-    public void setIdUsuario(Long idUsuario) {
-        this.idUsuario = idUsuario;
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
     }
 
-    public Long getIdProducto() {
-        return idProducto;
+    public Producto getProducto() {
+        return producto;
     }
 
-    public void setIdProducto(Long idProducto) {
-        this.idProducto = idProducto;
+    public void setProducto(Producto producto) {
+        this.producto = producto;
     }
 
-    public Long getIdOrden() {
-        return idOrden;
+    public Orden getOrden() {
+        return orden;
     }
 
-    public void setIdOrden(Long idOrden) {
-        this.idOrden = idOrden;
+    public void setOrden(Orden orden) {
+        this.orden = orden;
     }
 
     public LocalDateTime getFechaDescarga() {

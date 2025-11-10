@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  */
 public class UsuarioResponseDTO {
 
-    private Long id;
+    private Long idUsuario;
     private String nombre;
     private String apellido;
     private String email;
@@ -20,12 +20,12 @@ public class UsuarioResponseDTO {
     public UsuarioResponseDTO() {
     }
 
-    public Long getId() {
-        return id;
+    public Long getIdUsuario() {
+        return idUsuario;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setIdUsuario(Long idUsuario) {
+        this.idUsuario = idUsuario;
     }
 
     public String getNombre() {

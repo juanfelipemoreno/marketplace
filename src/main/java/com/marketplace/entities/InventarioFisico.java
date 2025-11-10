@@ -20,8 +20,9 @@ public class InventarioFisico {
     @Column(name = "id_inventario_fisico")
     private Long idInventarioFisico;
 
-    @Column(name = "id_producto", nullable = false, unique = true)
-    private Long idProducto;
+    @OneToOne
+    @JoinColumn(name = "id_producto", nullable = false, unique = true)
+    private Producto producto;
 
     @Column(name = "cantidad_disponible", nullable = false)
     private Integer cantidadDisponible;
@@ -38,6 +39,7 @@ public class InventarioFisico {
         this.fechaActualizacion = LocalDateTime.now();
     }
 
+    // Getters y Setters
     public Long getIdInventarioFisico() {
         return idInventarioFisico;
     }
@@ -46,12 +48,12 @@ public class InventarioFisico {
         this.idInventarioFisico = idInventarioFisico;
     }
 
-    public Long getIdProducto() {
-        return idProducto;
+    public Producto getProducto() {
+        return producto;
     }
 
-    public void setIdProducto(Long idProducto) {
-        this.idProducto = idProducto;
+    public void setProducto(Producto producto) {
+        this.producto = producto;
     }
 
     public Integer getCantidadDisponible() {

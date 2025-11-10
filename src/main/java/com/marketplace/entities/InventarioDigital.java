@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 /**
  *
- * @author USER
+ * @author Felipe Moreno
  */
 @Entity
 @Table(name = "inventario_digital")
@@ -16,8 +16,9 @@ public class InventarioDigital {
     @Column(name = "id_inventario_digital")
     private Long idInventarioDigital;
 
-    @Column(name = "id_producto", nullable = false, unique = true)
-    private Long idProducto;
+    @OneToOne
+    @JoinColumn(name = "id_producto", nullable = false, unique = true)
+    private Producto producto;
 
     @Column(name = "licencias_totales")
     private Integer licenciasTotales;
@@ -40,6 +41,7 @@ public class InventarioDigital {
         this.fechaActualizacion = LocalDateTime.now();
     }
 
+    // Getters y Setters
     public Long getIdInventarioDigital() {
         return idInventarioDigital;
     }
@@ -48,12 +50,12 @@ public class InventarioDigital {
         this.idInventarioDigital = idInventarioDigital;
     }
 
-    public Long getIdProducto() {
-        return idProducto;
+    public Producto getProducto() {
+        return producto;
     }
 
-    public void setIdProducto(Long idProducto) {
-        this.idProducto = idProducto;
+    public void setProducto(Producto producto) {
+        this.producto = producto;
     }
 
     public Integer getLicenciasTotales() {

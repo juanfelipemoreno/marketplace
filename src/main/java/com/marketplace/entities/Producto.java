@@ -1,4 +1,3 @@
-
 package com.marketplace.entities;
 
 import com.marketplace.enums.TipoProducto;
@@ -10,7 +9,6 @@ import java.time.LocalDateTime;
  *
  * @author Felipe Moreno
  */
-
 @Entity
 @Table(name = "productos")
 public class Producto {
@@ -20,11 +18,13 @@ public class Producto {
     @Column(name = "id_producto")
     private Long idProducto;
 
-    @Column(name = "id_vendedor", nullable = false)
-    private Long idVendedor;
+    @ManyToOne
+    @JoinColumn(name = "id_vendedor", nullable = false)
+    private Usuario vendedor;
 
-    @Column(name = "id_categoria", nullable = false)
-    private Long idCategoria;
+    @ManyToOne
+    @JoinColumn(name = "id_categoria", nullable = false)
+    private Categoria categoria;
 
     @Column(nullable = false, length = 200)
     private String nombre;
@@ -48,11 +48,18 @@ public class Producto {
     @Column(nullable = false)
     private Boolean estado;
 
+    @OneToOne(mappedBy = "producto", cascade = CascadeType.ALL)
+    private InventarioFisico inventarioFisico;
+
+    @OneToOne(mappedBy = "producto", cascade = CascadeType.ALL)
+    private InventarioDigital inventarioDigital;
+
     public Producto() {
         this.fechaCreacion = LocalDateTime.now();
         this.estado = true;
     }
 
+    // Getters y Setters
     public Long getIdProducto() {
         return idProducto;
     }
@@ -61,20 +68,20 @@ public class Producto {
         this.idProducto = idProducto;
     }
 
-    public Long getIdVendedor() {
-        return idVendedor;
+    public Usuario getVendedor() {
+        return vendedor;
     }
 
-    public void setIdVendedor(Long idVendedor) {
-        this.idVendedor = idVendedor;
+    public void setVendedor(Usuario vendedor) {
+        this.vendedor = vendedor;
     }
 
-    public Long getIdCategoria() {
-        return idCategoria;
+    public Categoria getCategoria() {
+        return categoria;
     }
 
-    public void setIdCategoria(Long idCategoria) {
-        this.idCategoria = idCategoria;
+    public void setCategoria(Categoria categoria) {
+        this.categoria = categoria;
     }
 
     public String getNombre() {
@@ -125,11 +132,27 @@ public class Producto {
         this.fechaCreacion = fechaCreacion;
     }
 
-    public Boolean getEstado() {
+    public Boolean isEstado() {
         return estado;
     }
 
     public void setEstado(Boolean estado) {
         this.estado = estado;
+    }
+
+    public InventarioFisico getInventarioFisico() {
+        return inventarioFisico;
+    }
+
+    public void setInventarioFisico(InventarioFisico inventarioFisico) {
+        this.inventarioFisico = inventarioFisico;
+    }
+
+    public InventarioDigital getInventarioDigital() {
+        return inventarioDigital;
+    }
+
+    public void setInventarioDigital(InventarioDigital inventarioDigital) {
+        this.inventarioDigital = inventarioDigital;
     }
 }

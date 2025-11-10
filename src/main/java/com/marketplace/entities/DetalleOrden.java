@@ -16,11 +16,13 @@ public class DetalleOrden {
     @Column(name = "id_detalle")
     private Long idDetalle;
 
-    @Column(name = "id_orden", nullable = false)
-    private Long idOrden;
+    @ManyToOne
+    @JoinColumn(name = "id_orden", nullable = false)
+    private Orden orden;
 
-    @Column(name = "id_producto", nullable = false)
-    private Long idProducto;
+    @ManyToOne
+    @JoinColumn(name = "id_producto", nullable = false)
+    private Producto producto;
 
     @Column(nullable = false)
     private Integer cantidad;
@@ -31,9 +33,6 @@ public class DetalleOrden {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
-    public DetalleOrden() {
-    }
-
     public Long getIdDetalle() {
         return idDetalle;
     }
@@ -42,20 +41,20 @@ public class DetalleOrden {
         this.idDetalle = idDetalle;
     }
 
-    public Long getIdOrden() {
-        return idOrden;
+    public Orden getOrden() {
+        return orden;
     }
 
-    public void setIdOrden(Long idOrden) {
-        this.idOrden = idOrden;
+    public void setOrden(Orden orden) {
+        this.orden = orden;
     }
 
-    public Long getIdProducto() {
-        return idProducto;
+    public Producto getProducto() {
+        return producto;
     }
 
-    public void setIdProducto(Long idProducto) {
-        this.idProducto = idProducto;
+    public void setProducto(Producto producto) {
+        this.producto = producto;
     }
 
     public Integer getCantidad() {

@@ -4,6 +4,8 @@ import com.marketplace.enums.EstadoOrden;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -21,8 +23,12 @@ public class Orden {
     @Column(name = "numero_orden", nullable = false, unique = true, length = 50)
     private String numeroOrden;
 
-    @Column(name = "id_usuario", nullable = false)
-    private Long idUsuario;
+    @ManyToOne
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private Usuario usuario;
+
+    @OneToMany(mappedBy = "orden", cascade = CascadeType.ALL)
+    private List<DetalleOrden> detalles = new ArrayList<>();
 
     @Column(name = "fecha_orden")
     private LocalDateTime fechaOrden;
@@ -42,6 +48,7 @@ public class Orden {
         this.estado = EstadoOrden.PENDIENTE;
     }
 
+    // Getters y Setters
     public Long getIdOrden() {
         return idOrden;
     }
@@ -58,12 +65,20 @@ public class Orden {
         this.numeroOrden = numeroOrden;
     }
 
-    public Long getIdUsuario() {
-        return idUsuario;
+    public Usuario getUsuario() {
+        return usuario;
     }
 
-    public void setIdUsuario(Long idUsuario) {
-        this.idUsuario = idUsuario;
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
+
+    public List<DetalleOrden> getDetalles() {
+        return detalles;
+    }
+
+    public void setDetalles(List<DetalleOrden> detalles) {
+        this.detalles = detalles;
     }
 
     public LocalDateTime getFechaOrden() {
