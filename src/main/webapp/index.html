@@ -1,10 +1,1279 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
     <head>
-        <title>Start Page</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Marketplace - Productos Físicos y Digitales</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            .animate-fade-in {
+                animation: fadeIn 0.3s ease-in;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .loader {
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #3b82f6;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+        </style>
     </head>
-    <body>
-        <h1>Hello World!</h1>
+    <body class="bg-gray-50">
+        <!-- Navbar -->
+        <nav class="bg-white shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <i class="fas fa-store text-blue-600 text-2xl mr-2"></i>
+                        <span class="text-xl font-bold text-gray-800">Marketplace</span>
+                    </div>
+
+                    <div class="flex items-center space-x-4" id="navMenu">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="mainContent" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- El contenido se cargará aquí dinámicamente -->
+        </main>
+
+        <!-- Toast Notifications -->
+        <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+        <!-- Modal Container -->
+        <div id="modalContainer"></div>
+
+        <script>
+        // ========================================
+        // CONFIGURACIÓN Y UTILIDADES
+        // ========================================
+        const API_BASE = '/marketplace-backend/resources';
+
+        const App = {
+            currentUser: null,
+            currentPage: 'home',
+            cart: null,
+
+            init() {
+                this.checkSession();
+                this.loadInitialPage();
+                this.setupEventListeners();
+            },
+
+            async checkSession() {
+                try {
+                    const response = await fetch(`${API_BASE}/usuarios/perfil`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.currentUser = data.data;
+                        this.updateNavbar();
+                    }
+                } catch (error) {
+                    console.log('No hay sesión activa');
+                }
+            },
+
+            loadInitialPage() {
+                const hash = window.location.hash.slice(1) || 'home';
+                this.navigateTo(hash);
+            },
+
+            setupEventListeners() {
+                window.addEventListener('hashchange', () => {
+                    const page = window.location.hash.slice(1) || 'home';
+                    this.navigateTo(page);
+                });
+            },
+
+            navigateTo(page) {
+                this.currentPage = page;
+                window.location.hash = page;
+                this.renderPage(page);
+            },
+
+            updateNavbar() {
+                const navMenu = document.getElementById('navMenu');
+
+                if (this.currentUser) {
+                    navMenu.innerHTML = `
+                        <a href="#home" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-home mr-1"></i> Inicio
+                        </a>
+                        <a href="#catalogo" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-shopping-bag mr-1"></i> Catálogo
+                        </a>
+                        ${this.currentUser.rol === 'VENDEDOR' || this.currentUser.rol === 'ADMIN' ? `
+                            <a href="#mis-productos" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                                <i class="fas fa-box mr-1"></i> Mis Productos
+                            </a>
+                        ` : ''}
+                        ${this.currentUser.rol === 'ADMIN' ? `
+                            <a href="#admin" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                                <i class="fas fa-cog mr-1"></i> Admin
+                            </a>
+                        ` : ''}
+                        <a href="#carrito" class="text-gray-700 hover:text-blue-600 px-3 py-2 relative">
+                            <i class="fas fa-shopping-cart mr-1"></i> Carrito
+                            <span id="cartCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                        </a>
+                        <a href="#ordenes" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-receipt mr-1"></i> Órdenes
+                        </a>
+                        <a href="#perfil" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-user mr-1"></i> ${this.currentUser.nombre}
+                        </a>
+                        <button onclick="App.logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                            <i class="fas fa-sign-out-alt mr-1"></i> Salir
+                        </button>
+                    `;
+                    this.loadCart();
+                } else {
+                    navMenu.innerHTML = `
+                        <a href="#home" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-home mr-1"></i> Inicio
+                        </a>
+                        <a href="#catalogo" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-shopping-bag mr-1"></i> Catálogo
+                        </a>
+                        <a href="#login" class="text-gray-700 hover:text-blue-600 px-3 py-2">
+                            <i class="fas fa-sign-in-alt mr-1"></i> Iniciar Sesión
+                        </a>
+                        <a href="#registro" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-user-plus mr-1"></i> Registrarse
+                        </a>
+                    `;
+                }
+            },
+
+            async loadCart() {
+                try {
+                    const response = await fetch(`${API_BASE}/carrito`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.cart = data.data;
+                        this.updateCartCount();
+                    }
+                } catch (error) {
+                    console.error('Error al cargar carrito:', error);
+                }
+            },
+
+            updateCartCount() {
+                const cartCount = document.getElementById('cartCount');
+                if (cartCount && this.cart) {
+                    cartCount.textContent = this.cart.totalItems || 0;
+                }
+            },
+
+            async logout() {
+                try {
+                    await fetch(`${API_BASE}/usuarios/logout`, {method: 'POST'});
+                    this.currentUser = null;
+                    this.cart = null;
+                    this.updateNavbar();
+                    this.navigateTo('home');
+                    showToast('Sesión cerrada exitosamente', 'success');
+                } catch (error) {
+                    showToast('Error al cerrar sesión', 'error');
+                }
+            },
+
+            renderPage(page) {
+                const content = document.getElementById('mainContent');
+                content.innerHTML = '<div class="flex justify-center py-20"><div class="loader"></div></div>';
+
+                setTimeout(() => {
+                    switch (page) {
+                        case 'home':
+                            renderHome();
+                            break;
+                        case 'login':
+                            renderLogin();
+                            break;
+                        case 'registro':
+                            renderRegistro();
+                            break;
+                        case 'catalogo':
+                            renderCatalogo();
+                            break;
+                        case 'carrito':
+                            renderCarrito();
+                            break;
+                        case 'ordenes':
+                            renderOrdenes();
+                            break;
+                        case 'perfil':
+                            renderPerfil();
+                            break;
+                        case 'mis-productos':
+                            renderMisProductos();
+                            break;
+                        case 'admin':
+                            renderAdmin();
+                            break;
+                        default:
+                            renderHome();
+                    }
+                }, 300);
+            }
+        };
+
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                warning: 'bg-yellow-500',
+                info: 'bg-blue-500'
+            };
+
+            toast.className = `${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg animate-fade-in`;
+            toast.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showModal(title, content) {
+            const container = document.getElementById('modalContainer');
+            container.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="closeModal()">
+                    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 animate-fade-in" onclick="event.stopPropagation()">
+                        <div class="flex justify-between items-center p-6 border-b">
+                            <h3 class="text-2xl font-bold">${title}</h3>
+                            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                        <div class="p-6">${content}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeModal() {
+            document.getElementById('modalContainer').innerHTML = '';
+        }
+
+        function renderHome() {
+            const content = document.getElementById('mainContent');
+            content.innerHTML = `
+                <div class="animate-fade-in">
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-xl p-12 mb-8">
+                        <h1 class="text-5xl font-bold mb-4">Bienvenido a Marketplace</h1>
+                        <p class="text-xl mb-6">El mejor lugar para comprar y vender productos físicos y digitales</p>
+                        <div class="space-x-4">
+                            <a href="#catalogo" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 inline-block">
+                                Explorar Catálogo
+                            </a>
+                            ${!App.currentUser ? `
+                                <a href="#registro" class="bg-blue-800 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-900 inline-block">
+                                    Registrarse Gratis
+                                </a>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <i class="fas fa-box text-blue-600 text-4xl mb-4"></i>
+                            <h3 class="text-xl font-bold mb-2">Productos Físicos</h3>
+                            <p class="text-gray-600">Encuentra ropa, accesorios, dispositivos electrónicos y más</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <i class="fas fa-cloud-download-alt text-purple-600 text-4xl mb-4"></i>
+                            <h3 class="text-xl font-bold mb-2">Productos Digitales</h3>
+                            <p class="text-gray-600">E-books, software, cursos en línea y música digital</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <i class="fas fa-shield-alt text-green-600 text-4xl mb-4"></i>
+                            <h3 class="text-xl font-bold mb-2">Compra Segura</h3>
+                            <p class="text-gray-600">Sistema de pagos seguro y protección al comprador</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLogin() {
+            const content = document.getElementById('mainContent');
+            content.innerHTML = `
+                <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg animate-fade-in">
+                    <h2 class="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+                    <form id="loginForm" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Email</label>
+                            <input type="email" name="email" required 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="correo@ejemplo.com">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Contraseña</label>
+                            <input type="password" name="password" required 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="••••••••">
+                        </div>
+                        <button type="submit" 
+                            class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                            Iniciar Sesión
+                        </button>
+                    </form>
+                    <p class="mt-4 text-center text-gray-600">
+                        ¿No tienes cuenta? <a href="#registro" class="text-blue-600 hover:underline">Regístrate aquí</a>
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = {
+                    email: formData.get('email'),
+                    password: formData.get('password')
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE}/usuarios/login`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        App.currentUser = result.data;
+                        App.updateNavbar();
+                        App.navigateTo('home');
+                        showToast('¡Bienvenido de nuevo!', 'success');
+                    } else {
+                        showToast(result.message || 'Error al iniciar sesión', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error de conexión', 'error');
+                }
+            });
+        }
+
+        function renderRegistro() {
+            const content = document.getElementById('mainContent');
+            content.innerHTML = `
+                <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg animate-fade-in">
+                    <h2 class="text-3xl font-bold mb-6 text-center">Crear Cuenta</h2>
+                    <form id="registroForm" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Nombre</label>
+                            <input type="text" name="nombre" required 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Apellido</label>
+                            <input type="text" name="apellido" required 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Email</label>
+                            <input type="email" name="email" required 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Contraseña</label>
+                            <input type="password" name="password" required 
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Mínimo 8 caracteres">
+                            <p class="text-sm text-gray-500 mt-1">
+                                Debe incluir mayúsculas, minúsculas, números y caracteres especiales
+                            </p>
+                        </div>
+                        <button type="submit" 
+                            class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                            Registrarse
+                        </button>
+                    </form>
+                    <p class="mt-4 text-center text-gray-600">
+                        ¿Ya tienes cuenta? <a href="#login" class="text-blue-600 hover:underline">Inicia sesión</a>
+                    </p>
+                </div>
+            `;
+
+            document.getElementById('registroForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = {
+                    nombre: formData.get('nombre'),
+                    apellido: formData.get('apellido'),
+                    email: formData.get('email'),
+                    password: formData.get('password')
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE}/usuarios/registro`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        showToast('Cuenta creada exitosamente', 'success');
+                        App.navigateTo('login');
+                    } else {
+                        showToast(result.message || 'Error al registrar', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error de conexión', 'error');
+                }
+            });
+        }
+
+        async function renderCatalogo() {
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="flex justify-center py-20"><div class="loader"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/catalogo`);
+                const result = await response.json();
+                const productos = result.data || [];
+
+                content.innerHTML = `
+                    <div class="animate-fade-in">
+                        <h2 class="text-3xl font-bold mb-6">Catálogo de Productos</h2>
+                        
+                        <div class="mb-6">
+                            <input type="text" id="searchInput" placeholder="Buscar productos..."
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div id="productosGrid" class="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            ${productos.map(p => `
+                                <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition">
+                                    <img src="${p.imagenUrl || 'https://via.placeholder.com/300'}" 
+                                        alt="${p.nombre}" class="w-full h-48 object-cover">
+                                    <div class="p-4">
+                                        <span class="text-xs ${p.tipoProducto === 'DIGITAL' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 rounded">
+                                            ${p.tipoProducto}
+                                        </span>
+                                        <h3 class="font-bold text-lg mt-2">${p.nombre}</h3>
+                                        <p class="text-gray-600 text-sm mt-1 line-clamp-2">${p.descripcion}</p>
+                                        <div class="mt-4 flex justify-between items-center">
+                                            <span class="text-2xl font-bold text-blue-600">$${p.precio}</span>
+                                            ${p.disponible ? `
+                                                <button onclick="agregarAlCarrito(${p.id})" 
+                                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                                    <i class="fas fa-cart-plus"></i>
+                                                </button>
+                                            ` : `
+                                                <span class="text-red-500 text-sm">Agotado</span>
+                                            `}
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-2">Stock: ${p.disponibilidad}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                // Búsqueda en tiempo real
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase();
+                    const filtered = productos.filter(p =>
+                        p.nombre.toLowerCase().includes(term) ||
+                                p.descripcion.toLowerCase().includes(term)
+                    );
+
+                    document.getElementById('productosGrid').innerHTML = filtered.map(p => `
+                        <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition">
+                            <img src="${p.imagenUrl || 'https://via.placeholder.com/300'}" 
+                                alt="${p.nombre}" class="w-full h-48 object-cover">
+                            <div class="p-4">
+                                <span class="text-xs ${p.tipoProducto === 'DIGITAL' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 rounded">
+                                    ${p.tipoProducto}
+                                </span>
+                                <h3 class="font-bold text-lg mt-2">${p.nombre}</h3>
+                                <p class="text-gray-600 text-sm mt-1">${p.descripcion}</p>
+                                <div class="mt-4 flex justify-between items-center">
+                                    <span class="text-2xl font-bold text-blue-600">$${p.precio}</span>
+                                    ${p.disponible ? `
+                                        <button onclick="agregarAlCarrito(${p.id})" 
+                                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                            <i class="fas fa-cart-plus"></i>
+                                        </button>
+                                    ` : `
+                                        <span class="text-red-500 text-sm">Agotado</span>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                });
+
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="text-center py-20">
+                        <p class="text-red-500">Error al cargar productos</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function agregarAlCarrito(idProducto) {
+            if (!App.currentUser) {
+                showToast('Debes iniciar sesión para agregar al carrito', 'warning');
+                App.navigateTo('login');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/carrito/items`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({idProducto, cantidad: 1})
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    App.cart = result.data;
+                    App.updateCartCount();
+                    showToast('Producto agregado al carrito', 'success');
+                } else {
+                    showToast(result.message || 'Error al agregar al carrito', 'error');
+                }
+            } catch (error) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function renderCarrito() {
+            if (!App.currentUser) {
+                App.navigateTo('login');
+                return;
+            }
+
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="flex justify-center py-20"><div class="loader"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/carrito`);
+                const result = await response.json();
+                const carrito = result.data;
+
+                if (!carrito.items || carrito.items.length === 0) {
+                    content.innerHTML = `
+                        <div class="text-center py-20 animate-fade-in">
+                            <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
+                            <h2 class="text-2xl font-bold text-gray-600 mb-4">Tu carrito está vacío</h2>
+                            <a href="#catalogo" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                                Ir al Catálogo
+                            </a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                content.innerHTML = `
+                    <div class="animate-fade-in">
+                        <h2 class="text-3xl font-bold mb-6">Mi Carrito</h2>
+                        
+                        <div class="grid lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 space-y-4">
+                                ${carrito.items.map(item => `
+                                    <div class="bg-white p-4 rounded-lg shadow flex items-center space-x-4">
+                                        <img src="${item.imagenProducto || 'https://via.placeholder.com/100'}" 
+                                            class="w-20 h-20 object-cover rounded">
+                                        <div class="flex-1">
+                                            <h3 class="font-bold">${item.nombreProducto}</h3>
+                                            <p class="text-gray-600">$${item.precioUnitario}</p>
+                                            <span class="text-xs ${item.tipoProducto === 'DIGITAL' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 rounded">
+                                                ${item.tipoProducto}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <button onclick="actualizarCantidad(${item.idItem}, ${item.cantidad - 1})"
+                                                class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">-</button>
+                                            <span class="font-bold">${item.cantidad}</span>
+                                            <button onclick="actualizarCantidad(${item.idItem}, ${item.cantidad + 1})"
+                                                class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">+</button>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="font-bold text-lg">$${item.subtotal}</p>
+                                            <button onclick="eliminarDelCarrito(${item.idItem})"
+                                                class="text-red-500 hover:text-red-700 text-sm">
+                                                <i class="fas fa-trash"></i> Eliminar
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <div class="lg:col-span-1">
+                                <div class="bg-white p-6 rounded-lg shadow sticky top-24">
+                                    <h3 class="text-xl font-bold mb-4">Resumen de Compra</h3>
+                                    <div class="space-y-2 mb-4">
+                                        <div class="flex justify-between">
+                                            <span>Subtotal:</span>
+                                            <span class="font-bold">${carrito.totalPrecio}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>Items:</span>
+                                            <span class="font-bold">${carrito.totalItems}</span>
+                                        </div>
+                                    </div>
+                                    <div class="border-t pt-4 mb-4">
+                                        <div class="flex justify-between text-xl font-bold">
+                                            <span>Total:</span>
+                                            <span class="text-blue-600">${carrito.totalPrecio}</span>
+                                        </div>
+                                    </div>
+                                    <button onclick="procesarCompra()" 
+                                        class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                                        Proceder al Pago
+                                    </button>
+                                    <button onclick="vaciarCarrito()" 
+                                        class="w-full mt-2 bg-red-100 text-red-600 py-2 rounded-lg hover:bg-red-200">
+                                        Vaciar Carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                content.innerHTML = `<div class="text-center py-20"><p class="text-red-500">Error al cargar carrito</p></div>`;
+            }
+        }
+
+        async function actualizarCantidad(idItem, nuevaCantidad) {
+            if (nuevaCantidad <= 0) {
+                eliminarDelCarrito(idItem);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/carrito/items/${idItem}?cantidad=${nuevaCantidad}`, {
+                    method: 'PUT'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    App.cart = result.data;
+                    App.updateCartCount();
+                    renderCarrito();
+                } else {
+                    showToast(result.message || 'Error al actualizar cantidad', 'error');
+                }
+            } catch (error) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function eliminarDelCarrito(idItem) {
+            try {
+                const response = await fetch(`${API_BASE}/carrito/items/${idItem}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    App.cart = result.data;
+                    App.updateCartCount();
+                    renderCarrito();
+                    showToast('Producto eliminado del carrito', 'success');
+                } else {
+                    showToast(result.message || 'Error al eliminar', 'error');
+                }
+            } catch (error) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function vaciarCarrito() {
+            if (!confirm('¿Estás seguro de vaciar el carrito?'))
+                return;
+
+            try {
+                const response = await fetch(`${API_BASE}/carrito`, {method: 'DELETE'});
+
+                if (response.ok) {
+                    App.cart = null;
+                    App.updateCartCount();
+                    renderCarrito();
+                    showToast('Carrito vaciado', 'success');
+                }
+            } catch (error) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function procesarCompra() {
+            const modalContent = `
+                <form id="checkoutForm" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Método de Pago</label>
+                        <select name="metodoPago" required class="w-full px-4 py-2 border rounded-lg">
+                            <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                            <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
+                            <option value="PSE">PSE</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+                        Confirmar Compra
+                    </button>
+                </form>
+            `;
+
+            showModal('Finalizar Compra', modalContent);
+
+            document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+
+                try {
+                    const response = await fetch(`${API_BASE}/ordenes`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({metodoPago: formData.get('metodoPago')})
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        closeModal();
+                        App.cart = null;
+                        App.updateCartCount();
+                        showToast('¡Compra realizada exitosamente!', 'success');
+                        App.navigateTo('ordenes');
+                    } else {
+                        showToast(result.message || 'Error al procesar compra', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error de conexión', 'error');
+                }
+            });
+        }
+
+        async function renderOrdenes() {
+            if (!App.currentUser) {
+                App.navigateTo('login');
+                return;
+            }
+
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="flex justify-center py-20"><div class="loader"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/ordenes`);
+                const result = await response.json();
+                const ordenes = result.data || [];
+
+                content.innerHTML = `
+                    <div class="animate-fade-in">
+                        <h2 class="text-3xl font-bold mb-6">Mis Órdenes</h2>
+                        
+                        ${ordenes.length === 0 ? `
+                            <div class="text-center py-20">
+                                <i class="fas fa-receipt text-6xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-600">No tienes órdenes aún</p>
+                            </div>
+                        ` : `
+                            <div class="space-y-4">
+                                ${ordenes.map(orden => `
+                                    <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h3 class="font-bold text-lg">Orden #${orden.numeroOrden}</h3>
+                                                <p class="text-gray-600 text-sm">${new Date(orden.fechaOrden).toLocaleString()}</p>
+                                                <span class="inline-block mt-2 px-3 py-1 rounded text-sm ${
+                            orden.estado === 'CONFIRMADA' ? 'bg-green-100 text-green-800' :
+                            orden.estado === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                            }">
+                                                    ${orden.estado}
+                                                </span>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-2xl font-bold text-blue-600">${orden.total}</p>
+                                                <p class="text-sm text-gray-600">${orden.cantidadItems} items</p>
+                                            </div>
+                                        </div>
+                                        <button onclick="verDetalleOrden(${orden.id})" 
+                                            class="mt-4 text-blue-600 hover:underline">
+                                            Ver Detalles <i class="fas fa-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="text-center py-20"><p class="text-red-500">Error al cargar órdenes</p></div>`;
+            }
+        }
+
+        async function verDetalleOrden(idOrden) {
+            try {
+                const response = await fetch(`${API_BASE}/ordenes/${idOrden}`);
+                const result = await response.json();
+                const orden = result.data;
+
+                const modalContent = `
+                    <div class="space-y-4">
+                        <div class="border-b pb-4">
+                            <p><strong>Número de Orden:</strong> ${orden.numeroOrden}</p>
+                            <p><strong>Fecha:</strong> ${new Date(orden.fechaOrden).toLocaleString()}</p>
+                            <p><strong>Estado:</strong> <span class="px-2 py-1 rounded ${
+                        orden.estado === 'CONFIRMADA' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }">${orden.estado}</span></p>
+                            <p><strong>Método de Pago:</strong> ${orden.metodoPago}</p>
+                        </div>
+                        
+                        <h4 class="font-bold">Productos:</h4>
+                        <div class="space-y-2">
+                            ${orden.detalles.map(d => `
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <div>
+                                        <p class="font-semibold">${d.nombreProducto}</p>
+                                        <p class="text-sm text-gray-600">Cantidad: ${d.cantidad} × ${d.precioUnitario}</p>
+                                    </div>
+                                    <p class="font-bold">${d.subtotal}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="border-t pt-4 flex justify-between text-xl font-bold">
+                            <span>Total:</span>
+                            <span class="text-blue-600">${orden.total}</span>
+                        </div>
+                    </div>
+                `;
+
+                showModal(`Detalle de Orden #${orden.numeroOrden}`, modalContent);
+            } catch (error) {
+                showToast('Error al cargar detalle', 'error');
+            }
+        }
+
+        function renderPerfil() {
+            if (!App.currentUser) {
+                App.navigateTo('login');
+                return;
+            }
+
+            const content = document.getElementById('mainContent');
+            content.innerHTML = `
+                <div class="max-w-2xl mx-auto animate-fade-in">
+                    <h2 class="text-3xl font-bold mb-6">Mi Perfil</h2>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <div class="flex items-center space-x-4 mb-6 pb-6 border-b">
+                            <div class="w-20 h-20 bg-blue-600 text-white rounded-full flex items-center justify-center text-3xl font-bold">
+                                ${App.currentUser.nombre.charAt(0)}${App.currentUser.apellido.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-bold">${App.currentUser.nombre} ${App.currentUser.apellido}</h3>
+                                <p class="text-gray-600">${App.currentUser.email}</p>
+                                <span class="inline-block mt-1 px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm">
+                                    ${App.currentUser.rol}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 mb-2">Fecha de Registro</label>
+                                <p class="text-gray-600">${new Date(App.currentUser.fechaRegistro).toLocaleDateString()}</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 mb-2">Estado de Cuenta</label>
+                                <span class="px-3 py-1 rounded ${App.currentUser.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                    ${App.currentUser.estado ? 'Activa' : 'Inactiva'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-6 border-t space-x-4">
+                            <button onclick="mostrarCambiarPassword()" 
+                                class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                Cambiar Contraseña
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function mostrarCambiarPassword() {
+            const modalContent = `
+                <form id="cambiarPasswordForm" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Contraseña Actual</label>
+                        <input type="password" name="passwordActual" required 
+                            class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Nueva Contraseña</label>
+                        <input type="password" name="passwordNueva" required 
+                            class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+                        Cambiar Contraseña
+                    </button>
+                </form>
+            `;
+
+            showModal('Cambiar Contraseña', modalContent);
+
+            document.getElementById('cambiarPasswordForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+
+                try {
+                    const response = await fetch(`${API_BASE}/usuarios/password`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            passwordActual: formData.get('passwordActual'),
+                            passwordNueva: formData.get('passwordNueva')
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        closeModal();
+                        showToast('Contraseña actualizada exitosamente', 'success');
+                    } else {
+                        showToast(result.message || 'Error al cambiar contraseña', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error de conexión', 'error');
+                }
+            });
+        }
+
+        async function renderMisProductos() {
+            if (!App.currentUser || (App.currentUser.rol !== 'VENDEDOR' && App.currentUser.rol !== 'ADMIN')) {
+                App.navigateTo('home');
+                return;
+            }
+
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="flex justify-center py-20"><div class="loader"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/productos/mis-productos`);
+                const result = await response.json();
+                const productos = result.data || [];
+
+                content.innerHTML = `
+                    <div class="animate-fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-3xl font-bold">Mis Productos</h2>
+                            <button onclick="mostrarCrearProducto()" 
+                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-plus mr-2"></i> Nuevo Producto
+                            </button>
+                        </div>
+
+                        ${productos.length === 0 ? `
+                            <div class="text-center py-20">
+                                <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-600">No tienes productos aún</p>
+                            </div>
+                        ` : `
+                            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                ${productos.map(p => `
+                                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                                        <img src="${p.imagenUrl || 'https://via.placeholder.com/300'}" 
+                                            class="w-full h-48 object-cover">
+                                        <div class="p-4">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <span class="text-xs ${p.tipoProducto === 'DIGITAL' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} px-2 py-1 rounded">
+                                                    ${p.tipoProducto}
+                                                </span>
+                                                <span class="text-xs ${p.estado ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} px-2 py-1 rounded">
+                                                    ${p.estado ? 'Activo' : 'Inactivo'}
+                                                </span>
+                                            </div>
+                                            <h3 class="font-bold text-lg">${p.nombre}</h3>
+                                            <p class="text-gray-600 text-sm mt-1">${p.descripcion}</p>
+                                            <div class="mt-4 flex justify-between items-center">
+                                                <span class="text-xl font-bold text-blue-600">${p.precio}</span>
+                                                <span class="text-sm text-gray-600">Stock: ${p.disponibilidad}</span>
+                                            </div>
+                                            <div class="mt-4 flex space-x-2">
+                                                <button onclick="editarProducto(${p.id})" 
+                                                    class="flex-1 bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </button>
+                                                <button onclick="toggleEstadoProducto(${p.id}, ${!p.estado})" 
+                                                    class="flex-1 ${p.estado ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white px-3 py-2 rounded">
+                                                    <i class="fas fa-${p.estado ? 'times' : 'check'}"></i> ${p.estado ? 'Desactivar' : 'Activar'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="text-center py-20"><p class="text-red-500">Error al cargar productos</p></div>`;
+            }
+        }
+
+        async function mostrarCrearProducto() {
+            // Cargar categorías
+            const respCategorias = await fetch(`${API_BASE}/categorias`);
+            const resCat = await respCategorias.json();
+            const categorias = resCat.data || [];
+
+            const modalContent = `
+                <form id="crearProductoForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Nombre *</label>
+                            <input type="text" name="nombre" required 
+                                class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Categoría *</label>
+                            <select name="idCategoria" required class="w-full px-4 py-2 border rounded-lg">
+                                <option value="">Seleccionar...</option>
+                                ${categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2">Descripción *</label>
+                        <textarea name="descripcion" required rows="3"
+                            class="w-full px-4 py-2 border rounded-lg"></textarea>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 mb-2">Precio *</label>
+                            <input type="number" name="precio" step="0.01" required 
+                                class="w-full px-4 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 mb-2">Tipo de Producto *</label>
+                            <select name="tipoProducto" required onchange="toggleInventarioFields(this.value)"
+                                class="w-full px-4 py-2 border rounded-lg">
+                                <option value="">Seleccionar...</option>
+                                <option value="FISICO">Físico</option>
+                                <option value="DIGITAL">Digital</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 mb-2">URL de Imagen</label>
+                        <input type="url" name="imagenUrl" 
+                            class="w-full px-4 py-2 border rounded-lg"
+                            placeholder="https://ejemplo.com/imagen.jpg">
+                    </div>
+
+                    <div id="inventarioFisico" style="display:none;">
+                        <label class="block text-gray-700 mb-2">Cantidad Disponible *</label>
+                        <input type="number" name="cantidadDisponible" min="0"
+                            class="w-full px-4 py-2 border rounded-lg">
+                    </div>
+
+                    <div id="inventarioDigital" style="display:none;">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 mb-2">Licencias Totales *</label>
+                                <input type="number" name="licenciasTotales" min="1"
+                                    class="w-full px-4 py-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">URL del Archivo *</label>
+                                <input type="url" name="archivoUrl"
+                                    class="w-full px-4 py-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 mb-2">Tamaño (bytes)</label>
+                                <input type="number" name="tamanoArchivo"
+                                    class="w-full px-4 py-2 border rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700">
+                        Crear Producto
+                    </button>
+                </form>
+            `;
+
+            showModal('Nuevo Producto', modalContent);
+
+            window.toggleInventarioFields = function (tipo) {
+                document.getElementById('inventarioFisico').style.display = tipo === 'FISICO' ? 'block' : 'none';
+                document.getElementById('inventarioDigital').style.display = tipo === 'DIGITAL' ? 'block' : 'none';
+            };
+
+            document.getElementById('crearProductoForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+
+                const data = {
+                    nombre: formData.get('nombre'),
+                    descripcion: formData.get('descripcion'),
+                    precio: parseFloat(formData.get('precio')),
+                    tipoProducto: formData.get('tipoProducto'),
+                    idCategoria: parseInt(formData.get('idCategoria')),
+                    imagenUrl: formData.get('imagenUrl') || null
+                };
+
+                if (data.tipoProducto === 'FISICO') {
+                    data.cantidadDisponible = parseInt(formData.get('cantidadDisponible')) || 0;
+                } else if (data.tipoProducto === 'DIGITAL') {
+                    data.licenciasTotales = parseInt(formData.get('licenciasTotales')) || 1;
+                    data.archivoUrl = formData.get('archivoUrl');
+                    data.tamanoArchivo = parseInt(formData.get('tamanoArchivo')) || null;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE}/productos`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        closeModal();
+                        showToast('Producto creado exitosamente', 'success');
+                        renderMisProductos();
+                    } else {
+                        showToast(result.message || 'Error al crear producto', 'error');
+                    }
+                } catch (error) {
+                    showToast('Error de conexión', 'error');
+                }
+            });
+        }
+
+        async function toggleEstadoProducto(idProducto, nuevoEstado) {
+            try {
+                const endpoint = nuevoEstado ? 'activar' : 'desactivar';
+                const response = await fetch(`${API_BASE}/productos/${idProducto}/${endpoint === 'activar' ? 'activar' : ''}`, {
+                    method: nuevoEstado ? 'PUT' : 'DELETE'
+                });
+
+                if (response.ok) {
+                    showToast(`Producto ${nuevoEstado ? 'activado' : 'desactivado'} exitosamente`, 'success');
+                    renderMisProductos();
+                } else {
+                    showToast('Error al cambiar estado', 'error');
+                }
+            } catch (error) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function renderAdmin() {
+            if (!App.currentUser || App.currentUser.rol !== 'ADMIN') {
+                App.navigateTo('home');
+                return;
+            }
+
+            const content = document.getElementById('mainContent');
+            content.innerHTML = '<div class="flex justify-center py-20"><div class="loader"></div></div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/dashboard`);
+                const result = await response.json();
+                const dashboard = result.data;
+
+                content.innerHTML = `
+                    <div class="animate-fade-in">
+                        <h2 class="text-3xl font-bold mb-6">Panel de Administración</h2>
+                        
+                        <div class="grid md:grid-cols-4 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-lg shadow-lg">
+                                <i class="fas fa-users text-blue-600 text-3xl mb-2"></i>
+                                <h3 class="text-gray-600">Total Usuarios</h3>
+                                <p class="text-3xl font-bold">${dashboard.totalUsuarios}</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-lg">
+                                <i class="fas fa-user-tie text-purple-600 text-3xl mb-2"></i>
+                                <h3 class="text-gray-600">Vendedores</h3>
+                                <p class="text-3xl font-bold">${dashboard.totalVendedores}</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-lg">
+                                <i class="fas fa-shopping-cart text-green-600 text-3xl mb-2"></i>
+                                <h3 class="text-gray-600">Compradores</h3>
+                                <p class="text-3xl font-bold">${dashboard.totalCompradores}</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-lg">
+                                <i class="fas fa-receipt text-orange-600 text-3xl mb-2"></i>
+                                <h3 class="text-gray-600">Total Órdenes</h3>
+                                <p class="text-3xl font-bold">${dashboard.totalOrdenes}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="bg-white p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-bold mb-4">Gestión de Usuarios</h3>
+                                <button onclick="verUsuarios()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                                    <i class="fas fa-users mr-2"></i> Ver Todos los Usuarios
+                                </button>
+                            </div>
+                            
+                            <div class="bg-white p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-bold mb`;
+            } catch (error) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+        </script>
     </body>
 </html>
