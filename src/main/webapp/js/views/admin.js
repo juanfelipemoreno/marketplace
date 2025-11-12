@@ -1,7 +1,5 @@
-/**
- * Vista del Panel de Administración
- */
-const AdminView = {
+
+Views.admin = {
     async render() {
         if (!App.currentUser || App.currentUser.rol !== 'ADMIN') {
             App.navigateTo('home');

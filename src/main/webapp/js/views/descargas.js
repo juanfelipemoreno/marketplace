@@ -1,5 +1,5 @@
 
-const DescargasView = {
+Views.descargas = {
     async render() {
         if (!App.currentUser) {
             App.navigateTo('login');

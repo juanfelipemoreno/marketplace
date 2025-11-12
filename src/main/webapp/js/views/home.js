@@ -1,5 +1,5 @@
 
-const Views = Views || {};
+window.Views = window.Views || {};
 
 Views.home = {
     render() {

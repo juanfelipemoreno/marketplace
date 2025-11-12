@@ -1,5 +1,5 @@
 
-const ProductosView = {
+Views.productos = {
     async render() {
         if (!App.currentUser || (App.currentUser.rol !== 'VENDEDOR' && App.currentUser.rol !== 'ADMIN')) {
             App.navigateTo('home');

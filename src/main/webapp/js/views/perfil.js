@@ -1,5 +1,5 @@
 
-const PerfilView = {
+Views.perfil = {
     async render() {
         if (!App.currentUser) {
             App.navigateTo('login');

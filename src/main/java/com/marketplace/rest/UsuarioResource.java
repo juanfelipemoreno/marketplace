@@ -147,10 +147,10 @@ public class UsuarioResource {
         return Response.ok(response).build();
     }
     
-    // Métodos auxiliares
     
     private Long getUsuarioAutenticado() {
         HttpSession session = request.getSession(false);
+        
         if (session == null) {
             throw new WebApplicationException("Sesión no iniciada", Response.Status.UNAUTHORIZED);
         }
